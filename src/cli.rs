@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 
 /// Claude Code session journal for Obsidian.
 #[derive(Debug, Parser)]
-#[command(name = "audit", version, about)]
+#[command(name = "clog", version, about)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,

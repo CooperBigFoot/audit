@@ -5,29 +5,29 @@ use anyhow::{Context, Result};
 const SENTINEL_BEGIN: &str = "<!-- BEGIN AUDIT JOURNALING -->";
 
 const JOURNALING_BLOCK: &str = r#"<!-- BEGIN AUDIT JOURNALING -->
-## Session Journaling (audit)
+## Session Journaling (clog)
 
 After completing meaningful work (feature, bug fix, investigation, refactoring), log it:
 
 ```bash
-audit log --title "One-line description" \
+clog log --title "One-line description" \
   --body "Decisions made, problems encountered, key context" \
   --tags "tag1,tag2"
 ```
 
 For architectural decisions:
 ```bash
-audit decision --title "What was decided" --rationale "Why" --alternative "Option rejected"
+clog decision --title "What was decided" --rationale "Why" --alternative "Option rejected"
 ```
 
 For problems encountered:
 ```bash
-audit problem --title "What broke" --solution "How it was fixed" --severity medium
+clog problem --title "What broke" --solution "How it was fixed" --severity medium
 ```
 
 Before starting work, check recent context:
 ```bash
-audit recent --limit 5
+clog recent --limit 5
 ```
 <!-- END AUDIT JOURNALING -->"#;
 

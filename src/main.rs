@@ -9,6 +9,6 @@ fn main() -> Result<()> {
         )
         .init();
 
-    let cli = audit::cli::Cli::parse();
-    audit::commands::dispatch(cli.command)
+    let cli = clog::cli::Cli::parse();
+    clog::commands::dispatch(cli.command)
 }

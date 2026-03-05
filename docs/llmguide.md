@@ -1,6 +1,6 @@
-# audit -- LLM Agent User Guide
+# clog -- LLM Agent User Guide
 
-`audit` is a CLI that writes structured journal entries (logs, decisions, problems) into an Obsidian vault. Multiple Claude Code instances across different projects can use it concurrently.
+`clog` is a CLI that writes structured journal entries (logs, decisions, problems) into an Obsidian vault. Multiple Claude Code instances across different projects can use it concurrently.
 
 ## Quick Reference
 
@@ -8,26 +8,26 @@
 
 | Command | Required Flags | Optional Flags | Purpose |
 |---|---|---|---|
-| `audit log` | `--title` | `--body`, `--tags`, `--project` | General journal entry |
-| `audit decision` | `--title`, `--rationale` | `--alternative` (repeatable), `--body`, `--tags`, `--project` | Record an architectural decision |
-| `audit problem` | `--title` | `--body`, `--solution`, `--severity` (default: `medium`), `--tags`, `--project` | Record a problem and fix |
+| `clog log` | `--title` | `--body`, `--tags`, `--project` | General journal entry |
+| `clog decision` | `--title`, `--rationale` | `--alternative` (repeatable), `--body`, `--tags`, `--project` | Record an architectural decision |
+| `clog problem` | `--title` | `--body`, `--solution`, `--severity` (default: `medium`), `--tags`, `--project` | Record a problem and fix |
 
 ### Read Commands
 
 | Command | Arguments / Flags | Purpose |
 |---|---|---|
-| `audit recent` | `--project`, `--tags`, `--limit` (default: 10), `--format` (`short`/`full`/`json`) | Show recent entries |
-| `audit search` | `<query>` (positional), `--project`, `--tags`, `--limit` (default: 20) | Full-text search |
-| `audit projects` | (none) | List all known projects |
+| `clog recent` | `--project`, `--tags`, `--limit` (default: 10), `--format` (`short`/`full`/`json`) | Show recent entries |
+| `clog search` | `<query>` (positional), `--project`, `--tags`, `--limit` (default: 20) | Full-text search |
+| `clog projects` | (none) | List all known projects |
 
 ### Setup & Maintenance Commands
 
 | Command | Arguments / Flags | Purpose |
 |---|---|---|
-| `audit init` | `--vault <path>` | Initialize config and vault structure |
-| `audit setup-project` | `--path` (default: `.`), `--name` | Inject journaling instructions into CLAUDE.md |
-| `audit sync` | `--continuous` | Run Obsidian CLI sync (`ob sync`) |
-| `audit reindex` | (none) | Rebuild project index pages |
+| `clog init` | `--vault <path>` | Initialize config and vault structure |
+| `clog setup-project` | `--path` (default: `.`), `--name` | Inject journaling instructions into CLAUDE.md |
+| `clog sync` | `--continuous` | Run Obsidian CLI sync (`ob sync`) |
+| `clog reindex` | (none) | Rebuild project index pages |
 
 ## Setup Flow
 
@@ -35,37 +35,37 @@ Run these once per machine / vault:
 
 ```bash
 # 1. Initialize -- point to your Obsidian vault root
-audit init --vault ~/Documents/ObsidianVault
+clog init --vault ~/Documents/ObsidianVault
 
 # 2. In each project repo, inject journaling instructions into CLAUDE.md
 cd /path/to/my-project
-audit setup-project
+clog setup-project
 ```
 
-`audit init` creates:
-- Config at `~/.config/audit/config.toml`
+`clog init` creates:
+- Config at `~/.config/clog/config.toml`
 - `journal/` and `projects/` directories inside the vault
 
-`audit setup-project` appends a `<!-- BEGIN AUDIT JOURNALING -->` block to the project's `CLAUDE.md` (or creates one). It is idempotent -- running it again is a no-op.
+`clog setup-project` appends a `<!-- BEGIN AUDIT JOURNALING -->` block to the project's `CLAUDE.md` (or creates one). It is idempotent -- running it again is a no-op.
 
 ## Core Workflow
 
-### `audit log` -- general journal entry
+### `clog log` -- general journal entry
 
 Use after completing a unit of work (feature, refactor, investigation).
 
 ```bash
-audit log --title "Implement retry logic for S3 uploads" \
+clog log --title "Implement retry logic for S3 uploads" \
   --body "Added exponential backoff with jitter. Max 5 retries. Timeout set to 30s per attempt." \
   --tags "s3,reliability"
 ```
 
-### `audit decision` -- architectural decision record
+### `clog decision` -- architectural decision record
 
 Use when choosing between alternatives that affect the codebase long-term.
 
 ```bash
-audit decision \
+clog decision \
   --title "Use SQLite for local cache instead of Redis" \
   --rationale "No external daemon needed; single-file storage; sufficient for single-node workloads" \
   --alternative "Redis -- rejected due to deployment complexity" \
@@ -76,12 +76,12 @@ audit decision \
 
 The `--alternative` flag can be repeated for each rejected option.
 
-### `audit problem` -- problem and solution record
+### `clog problem` -- problem and solution record
 
 Use when something breaks and you fix it (or when you hit a significant obstacle).
 
 ```bash
-audit problem \
+clog problem \
   --title "Cargo build fails on aarch64 with openssl-sys" \
   --body "Build error: 'openssl/sha.h' not found. Only happens on ARM macOS." \
   --solution "Switched to rustls-tls feature flag; removed openssl-sys dependency" \
@@ -96,12 +96,12 @@ Severity values: `low`, `medium` (default), `high`.
 ```
 Did you just complete a task or make progress?
   YES --> Was there a significant choice between alternatives?
-    YES --> audit decision
+    YES --> clog decision
     NO  --> Did something break or go wrong?
-      YES --> audit problem
-      NO  --> audit log
+      YES --> clog problem
+      NO  --> clog log
   NO  --> Do you need context before starting?
-    YES --> audit recent / audit search
+    YES --> clog recent / clog search
 ```
 
 **Rules of thumb:**
@@ -115,13 +115,13 @@ Did you just complete a task or make progress?
 
 ```bash
 # Last 5 entries for the current project
-audit recent --limit 5
+clog recent --limit 5
 
 # All recent entries in JSON (useful for programmatic consumption)
-audit recent --format json --limit 20
+clog recent --format json --limit 20
 
 # Filter by project and tags
-audit recent --project hydra --tags "api,bugfix"
+clog recent --project hydra --tags "api,bugfix"
 ```
 
 Output formats:
@@ -132,8 +132,8 @@ Output formats:
 ### Search
 
 ```bash
-audit search "retry logic" --project my-service
-audit search "openssl" --tags "build" --limit 5
+clog search "retry logic" --project my-service
+clog search "openssl" --tags "build" --limit 5
 ```
 
 The query is a positional argument (not a flag). It performs full-text search across entry content.
@@ -141,41 +141,41 @@ The query is a positional argument (not a flag). It performs full-text search ac
 ### List projects
 
 ```bash
-audit projects
+clog projects
 ```
 
 Prints one project name per line. Useful to check what project names exist in the vault.
 
 ## Project Resolution
 
-When `--project` is omitted, audit resolves the project name in this order:
+When `--project` is omitted, clog resolves the project name in this order:
 
 1. **Git remote URL** -- parses the repo name from `git remote get-url origin` (e.g., `git@github.com:org/my-repo.git` becomes `my-repo`)
 2. **Git toplevel directory** -- falls back to the basename of the repo root
-3. **Config default** -- uses `default_project` from `~/.config/audit/config.toml`
+3. **Config default** -- uses `default_project` from `~/.config/clog/config.toml`
 4. **Error** -- if none of the above succeed, the command fails with a message to use `--project`
 
-In practice, running audit from inside a git repo is sufficient. Use `--project` explicitly only when running from outside a repo or when you want to override the detected name.
+In practice, running clog from inside a git repo is sufficient. Use `--project` explicitly only when running from outside a repo or when you want to override the detected name.
 
 ## Stdin Body
 
-When `--body` is omitted and stdin is a pipe, audit reads the body from stdin. This is useful for long-form content:
+When `--body` is omitted and stdin is a pipe, clog reads the body from stdin. This is useful for long-form content:
 
 ```bash
-echo "Detailed description of what happened..." | audit log --title "Investigate memory leak"
+echo "Detailed description of what happened..." | clog log --title "Investigate memory leak"
 
 # Pipe a file
-cat investigation-notes.txt | audit problem --title "Memory leak in worker pool" --solution "Fixed unbounded channel"
+cat investigation-notes.txt | clog problem --title "Memory leak in worker pool" --solution "Fixed unbounded channel"
 
 # Pipe a command's output
-git diff --stat HEAD~3 | audit log --title "Refactor authentication module"
+git diff --stat HEAD~3 | clog log --title "Refactor authentication module"
 ```
 
 If both `--body` and piped stdin are absent, the entry is created with no body.
 
 ## Vault Structure
 
-All entries are written to the Obsidian vault specified during `audit init`.
+All entries are written to the Obsidian vault specified during `clog init`.
 
 ```
 vault-root/
@@ -198,28 +198,28 @@ vault-root/
 
 ### Project index pages
 
-`audit reindex` generates `projects/<name>.md` files that link back to all journal entries for that project, grouped by type (Decisions, Problems, Log). These use Obsidian wikilinks for navigation.
+`clog reindex` generates `projects/<name>.md` files that link back to all journal entries for that project, grouped by type (Decisions, Problems, Log). These use Obsidian wikilinks for navigation.
 
 ## Sync and Reindex
 
 ```bash
 # One-shot sync via Obsidian CLI
-audit sync
+clog sync
 
 # Continuous sync (keeps running)
-audit sync --continuous
+clog sync --continuous
 
 # Rebuild all project index pages from journal entries
-audit reindex
+clog reindex
 ```
 
-`audit sync` shells out to the `ob` CLI (Obsidian CLI). It must be installed separately.
+`clog sync` shells out to the `ob` CLI (Obsidian CLI). It must be installed separately.
 
-`audit reindex` scans all journal entries, groups them by project, and regenerates the project index pages under `projects/`. Run it after bulk operations or if index pages get out of date.
+`clog reindex` scans all journal entries, groups them by project, and regenerates the project index pages under `projects/`. Run it after bulk operations or if index pages get out of date.
 
 ## Config File
 
-Located at `~/.config/audit/config.toml`:
+Located at `~/.config/clog/config.toml`:
 
 ```toml
 vault_path = "/Users/you/Documents/ObsidianVault"

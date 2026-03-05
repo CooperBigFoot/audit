@@ -30,7 +30,7 @@ impl Config {
     pub fn default_path() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("~/.config"))
-            .join("audit")
+            .join("clog")
             .join("config.toml")
     }
 
