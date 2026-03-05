@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-DESCRIBE THE PROJECT BRIEFLY
+audit
 
 ## Version Bumping (mandatory)
 
