@@ -1,30 +1,40 @@
 use anyhow::{Context, Result};
 
+use crate::commands::recent;
 use crate::config::Config;
+use crate::types::OutputFormat;
 use crate::vault::Vault;
+use crate::vault::filter::QueryFilter;
 use crate::vault::search;
 
 pub fn run(
     query: String,
     project: Option<String>,
     tags: Option<String>,
+    any_tags: Option<String>,
+    kind: Vec<String>,
+    since: Option<String>,
+    until: Option<String>,
+    severity: Option<String>,
+    min_severity: Option<String>,
+    session: Option<String>,
     limit: usize,
+    format: String,
 ) -> Result<()> {
-    let config = Config::load().context("failed to load config — run `audit init` first")?;
+    let config = Config::load().context("failed to load config — run `clog init` first")?;
     let vault = Vault::new(&config.vault_path);
 
-    let mut entries = search::list_entries(vault.root())?;
+    let format: OutputFormat = format
+        .parse()
+        .map_err(|e: String| anyhow::anyhow!("{e}"))?;
 
-    if let Some(proj) = project {
-        entries = search::filter_by_project(entries, &proj);
-    }
+    let filter = QueryFilter::from_cli_args(
+        project, tags, any_tags, since, until, kind, severity, min_severity, session,
+    )?;
 
-    if let Some(tags_str) = tags {
-        let tag_strs: Vec<String> = tags_str.split(',').map(|s| s.trim().to_lowercase()).collect();
-        entries = search::filter_by_tags(entries, &tag_strs);
-    }
-
-    entries = search::search_entries(entries, &query);
+    let entries = search::list_entries(vault.root())?;
+    let entries = filter.apply(entries);
+    let mut entries = search::search_entries(entries, &query);
     entries.truncate(limit);
 
     if entries.is_empty() {
@@ -32,22 +42,11 @@ pub fn run(
         return Ok(());
     }
 
-    for entry in &entries {
-        let fm = &entry.frontmatter;
-        let date = fm.timestamp.split('T').next().unwrap_or(&fm.timestamp);
-        let title = extract_title(&entry.content);
-        println!("[{date}] ({}) [{}] {title}", fm.entry_type, fm.project);
+    match format {
+        OutputFormat::Short => recent::print_short(&entries),
+        OutputFormat::Full => recent::print_full(&entries),
+        OutputFormat::Json => recent::print_json(&entries)?,
     }
 
     Ok(())
-}
-
-fn extract_title(content: &str) -> String {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(title) = trimmed.strip_prefix("# ") {
-            return title.to_string();
-        }
-    }
-    "(untitled)".to_string()
 }

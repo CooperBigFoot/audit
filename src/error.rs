@@ -18,6 +18,10 @@ pub enum VaultError {
     /// Returned when parsing an existing entry file fails.
     #[error("failed to parse entry at {path}: {reason}")]
     ParseError { path: PathBuf, reason: String },
+
+    /// Returned when the index file is corrupt or has an unsupported version.
+    #[error("index corrupt or unsupported at {path}: {reason}")]
+    IndexCorrupt { path: PathBuf, reason: String },
 }
 
 /// Errors from config operations.
@@ -54,4 +58,12 @@ pub enum ProjectError {
     /// Returned when project name cannot be determined.
     #[error("cannot detect project name from {path}")]
     CannotDetect { path: PathBuf },
+}
+
+/// Errors from date filter parsing.
+#[derive(Debug, thiserror::Error)]
+pub enum DateFilterError {
+    /// Returned when the date filter string cannot be parsed.
+    #[error("invalid date filter: {input} (expected ISO date, datetime, or relative like 7d/2w/1m)")]
+    InvalidFormat { input: String },
 }

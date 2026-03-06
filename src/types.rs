@@ -108,6 +108,18 @@ impl fmt::Display for EntryKind {
     }
 }
 
+impl FromStr for EntryKind {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "log" => Ok(Self::Log),
+            "decision" => Ok(Self::Decision),
+            "problem" => Ok(Self::Problem),
+            other => Err(format!("invalid entry kind: {other}")),
+        }
+    }
+}
+
 /// Severity level for problem entries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -125,6 +137,17 @@ impl fmt::Display for Severity {
             Self::Medium => f.write_str("medium"),
             Self::High => f.write_str("high"),
             Self::Critical => f.write_str("critical"),
+        }
+    }
+}
+
+impl Severity {
+    pub fn rank(self) -> u8 {
+        match self {
+            Self::Low => 0,
+            Self::Medium => 1,
+            Self::High => 2,
+            Self::Critical => 3,
         }
     }
 }

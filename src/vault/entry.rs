@@ -15,6 +15,12 @@ pub struct Frontmatter {
     pub aliases: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub severity: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+    #[serde(default)]
+    pub format_version: u8,
 }
 
 /// A complete journal entry.
@@ -32,6 +38,7 @@ pub struct Entry {
     // Problem-specific
     pub solution: Option<String>,
     pub severity: Option<Severity>,
+    pub session_id: Option<String>,
 }
 
 impl Entry {
@@ -66,6 +73,9 @@ impl Entry {
             tags: self.tags.iter().map(|t| t.as_str().to_string()).collect(),
             aliases: vec![alias],
             severity: self.severity.map(|s| s.to_string()),
+            title: Some(self.title.clone()),
+            session_id: self.session_id.clone(),
+            format_version: 1,
         }
     }
 }
@@ -88,6 +98,7 @@ pub struct EntryBuilder {
     alternatives: Vec<String>,
     solution: Option<String>,
     severity: Option<Severity>,
+    session_id: Option<String>,
 }
 
 impl EntryBuilder {
@@ -141,6 +152,11 @@ impl EntryBuilder {
         self
     }
 
+    pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
+        self
+    }
+
     /// Build the Entry. Returns Err if required fields are missing.
     pub fn build(self) -> anyhow::Result<Entry> {
         let kind = self
@@ -153,6 +169,13 @@ impl EntryBuilder {
             .title
             .ok_or_else(|| anyhow::anyhow!("title is required"))?;
 
+        let session_id = self.session_id.or_else(|| {
+            std::env::var("CLOG_SESSION_ID").ok()
+        }).or_else(|| {
+            let val: u32 = rand::thread_rng().gen_range(0..0xFFFF_FFFF);
+            Some(format!("{val:08x}"))
+        });
+
         Ok(Entry {
             kind,
             project,
@@ -164,6 +187,7 @@ impl EntryBuilder {
             alternatives: self.alternatives,
             solution: self.solution,
             severity: self.severity,
+            session_id,
         })
     }
 }

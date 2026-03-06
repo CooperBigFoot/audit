@@ -1,13 +1,17 @@
 pub mod entry;
+pub mod filter;
+pub mod index;
 pub mod markdown;
+pub mod parser;
 pub mod search;
 
 use std::path::{Path, PathBuf};
 
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::error::VaultError;
 use crate::vault::entry::Entry;
+use crate::vault::index::append_to_index;
 use crate::vault::markdown::render_entry;
 
 /// Represents an Obsidian vault on disk.
@@ -86,6 +90,11 @@ impl Vault {
         })?;
 
         info!(path = %target.display(), "entry written");
+
+        // Update the persistent index
+        if let Err(e) = append_to_index(&self.root, entry, &target) {
+            warn!(error = %e, "failed to update index; it will be rebuilt on next read");
+        }
 
         Ok(target)
     }

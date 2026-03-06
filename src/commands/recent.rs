@@ -3,32 +3,36 @@ use anyhow::{Context, Result};
 use crate::config::Config;
 use crate::types::OutputFormat;
 use crate::vault::Vault;
+use crate::vault::filter::QueryFilter;
+use crate::vault::parser::{self, ParsedEntry};
 use crate::vault::search::{self, StoredEntry};
 
 pub fn run(
     project: Option<String>,
     tags: Option<String>,
+    any_tags: Option<String>,
+    kind: Vec<String>,
+    since: Option<String>,
+    until: Option<String>,
+    severity: Option<String>,
+    min_severity: Option<String>,
+    session: Option<String>,
     limit: usize,
     format: String,
 ) -> Result<()> {
-    let config = Config::load().context("failed to load config — run `audit init` first")?;
+    let config = Config::load().context("failed to load config — run `clog init` first")?;
     let vault = Vault::new(&config.vault_path);
 
     let format: OutputFormat = format
         .parse()
         .map_err(|e: String| anyhow::anyhow!("{e}"))?;
 
-    let mut entries = search::list_entries(vault.root())?;
+    let filter = QueryFilter::from_cli_args(
+        project, tags, any_tags, since, until, kind, severity, min_severity, session,
+    )?;
 
-    if let Some(proj) = project {
-        entries = search::filter_by_project(entries, &proj);
-    }
-
-    if let Some(tags_str) = tags {
-        let tag_strs: Vec<String> = tags_str.split(',').map(|s| s.trim().to_lowercase()).collect();
-        entries = search::filter_by_tags(entries, &tag_strs);
-    }
-
+    let entries = search::list_entries(vault.root())?;
+    let mut entries = filter.apply(entries);
     entries.truncate(limit);
 
     if entries.is_empty() {
@@ -46,7 +50,7 @@ pub fn run(
 }
 
 pub fn run_projects() -> Result<()> {
-    let config = Config::load().context("failed to load config — run `audit init` first")?;
+    let config = Config::load().context("failed to load config — run `clog init` first")?;
     let vault = Vault::new(&config.vault_path);
 
     let entries = search::list_entries(vault.root())?;
@@ -64,20 +68,20 @@ pub fn run_projects() -> Result<()> {
     Ok(())
 }
 
-fn print_short(entries: &[StoredEntry]) {
+pub fn print_short(entries: &[StoredEntry]) {
     for entry in entries {
         let fm = &entry.frontmatter;
         let ts = &fm.timestamp;
         let date = ts.split('T').next().unwrap_or(ts);
         let kind = &fm.entry_type;
         let project = &fm.project;
-        let title = extract_title(&entry.content);
+        let title = parser::extract_title(entry);
 
         println!("[{date}] ({kind}) [{project}] {title}");
     }
 }
 
-fn print_full(entries: &[StoredEntry]) {
+pub fn print_full(entries: &[StoredEntry]) {
     for (i, entry) in entries.iter().enumerate() {
         if i > 0 {
             println!("{}", "\u{2500}".repeat(60));
@@ -86,31 +90,8 @@ fn print_full(entries: &[StoredEntry]) {
     }
 }
 
-fn print_json(entries: &[StoredEntry]) -> Result<()> {
-    let json_entries: Vec<serde_json::Value> = entries
-        .iter()
-        .map(|e| {
-            serde_json::json!({
-                "path": e.path.display().to_string(),
-                "timestamp": e.frontmatter.timestamp,
-                "project": e.frontmatter.project,
-                "entry_type": e.frontmatter.entry_type,
-                "tags": e.frontmatter.tags,
-                "title": extract_title(&e.content),
-            })
-        })
-        .collect();
-
-    println!("{}", serde_json::to_string_pretty(&json_entries)?);
+pub fn print_json(entries: &[StoredEntry]) -> Result<()> {
+    let parsed: Vec<ParsedEntry> = entries.iter().map(parser::parse_stored_entry).collect();
+    println!("{}", serde_json::to_string_pretty(&parsed)?);
     Ok(())
-}
-
-fn extract_title(content: &str) -> String {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(title) = trimmed.strip_prefix("# ") {
-            return title.to_string();
-        }
-    }
-    "(untitled)".to_string()
 }

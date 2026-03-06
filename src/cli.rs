@@ -100,6 +100,34 @@ pub enum Command {
         #[arg(long)]
         tags: Option<String>,
 
+        /// Filter by tags with OR logic (comma-separated).
+        #[arg(long)]
+        any_tags: Option<String>,
+
+        /// Filter by entry kind (log, decision, problem). Comma-separated for multiple.
+        #[arg(long)]
+        kind: Vec<String>,
+
+        /// Only entries after this date (ISO date, datetime, or relative: 7d, 2w, 1m).
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Only entries before this date.
+        #[arg(long)]
+        until: Option<String>,
+
+        /// Filter by exact severity (low, medium, high, critical).
+        #[arg(long)]
+        severity: Option<String>,
+
+        /// Filter by minimum severity (inclusive).
+        #[arg(long)]
+        min_severity: Option<String>,
+
+        /// Filter by session ID.
+        #[arg(long)]
+        session: Option<String>,
+
         /// Max entries to show.
         #[arg(long, default_value = "10")]
         limit: usize,
@@ -122,9 +150,41 @@ pub enum Command {
         #[arg(long)]
         tags: Option<String>,
 
+        /// Filter by tags with OR logic (comma-separated).
+        #[arg(long)]
+        any_tags: Option<String>,
+
+        /// Filter by entry kind (log, decision, problem). Comma-separated for multiple.
+        #[arg(long)]
+        kind: Vec<String>,
+
+        /// Only entries after this date (ISO date, datetime, or relative: 7d, 2w, 1m).
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Only entries before this date.
+        #[arg(long)]
+        until: Option<String>,
+
+        /// Filter by exact severity (low, medium, high, critical).
+        #[arg(long)]
+        severity: Option<String>,
+
+        /// Filter by minimum severity (inclusive).
+        #[arg(long)]
+        min_severity: Option<String>,
+
+        /// Filter by session ID.
+        #[arg(long)]
+        session: Option<String>,
+
         /// Max results.
         #[arg(long, default_value = "20")]
         limit: usize,
+
+        /// Output format: short, full, or json.
+        #[arg(long, default_value = "short")]
+        format: String,
     },
 
     /// Inject journaling instructions into a project's CLAUDE.md.
@@ -147,6 +207,25 @@ pub enum Command {
 
     /// Rebuild project index pages from journal entries.
     Reindex,
+
+    /// Show statistics about journal entries.
+    Stats {
+        /// Filter by project.
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Only entries after this date.
+        #[arg(long)]
+        since: Option<String>,
+
+        /// Only entries before this date.
+        #[arg(long)]
+        until: Option<String>,
+
+        /// Output format: short or json.
+        #[arg(long, default_value = "short")]
+        format: String,
+    },
 
     /// List known projects.
     Projects,

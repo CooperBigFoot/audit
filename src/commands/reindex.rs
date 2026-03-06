@@ -5,6 +5,8 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::vault::Vault;
+use crate::vault::index::ClogIndex;
+use crate::vault::parser;
 use crate::vault::search::{self, StoredEntry};
 
 pub fn run() -> Result<()> {
@@ -40,7 +42,15 @@ pub fn run() -> Result<()> {
         info!(project = project, path = %index_path.display(), "rebuilt project index");
     }
 
-    println!("Reindexed {} project(s):", by_project.len());
+    // Rebuild the persistent JSON index
+    let index = ClogIndex::rebuild(vault.root())
+        .context("failed to rebuild .clog-index.json")?;
+
+    println!(
+        "Reindexed {} project(s), {} entries in .clog-index.json:",
+        by_project.len(),
+        index.entries.len(),
+    );
     for project in by_project.keys() {
         println!("  - {project}");
     }
@@ -96,7 +106,7 @@ fn build_project_index(project: &str, entries: &[&StoredEntry]) -> String {
 
 fn write_entry_link(out: &mut String, entry: &StoredEntry) {
     let date = entry.frontmatter.timestamp.split('T').next().unwrap_or("?");
-    let title = extract_title(&entry.content);
+    let title = parser::extract_title(entry);
 
     // Get the filename without extension for Obsidian wikilink
     let filename = entry.path
@@ -105,14 +115,4 @@ fn write_entry_link(out: &mut String, entry: &StoredEntry) {
         .unwrap_or("?");
 
     out.push_str(&format!("- [{date}] [[journal/{filename}|{title}]]\n"));
-}
-
-fn extract_title(content: &str) -> String {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(title) = trimmed.strip_prefix("# ") {
-            return title.to_string();
-        }
-    }
-    "(untitled)".to_string()
 }

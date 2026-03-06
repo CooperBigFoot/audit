@@ -6,6 +6,7 @@ pub mod recent;
 pub mod reindex;
 pub mod search;
 pub mod setup_project;
+pub mod stats;
 pub mod sync;
 
 use anyhow::Result;
@@ -40,18 +41,39 @@ pub fn dispatch(command: Command) -> Result<()> {
         Command::Recent {
             project,
             tags,
+            any_tags,
+            kind,
+            since,
+            until,
+            severity,
+            min_severity,
+            session,
             limit,
             format,
-        } => recent::run(project, tags, limit, format),
+        } => recent::run(project, tags, any_tags, kind, since, until, severity, min_severity, session, limit, format),
         Command::Search {
             query,
             project,
             tags,
+            any_tags,
+            kind,
+            since,
+            until,
+            severity,
+            min_severity,
+            session,
             limit,
-        } => search::run(query, project, tags, limit),
+            format,
+        } => search::run(query, project, tags, any_tags, kind, since, until, severity, min_severity, session, limit, format),
         Command::SetupProject { path, name } => setup_project::run(path, name),
         Command::Sync { continuous } => sync::run(continuous),
         Command::Reindex => reindex::run(),
+        Command::Stats {
+            project,
+            since,
+            until,
+            format,
+        } => stats::run(project, since, until, format),
         Command::Projects => recent::run_projects(),
     }
 }
