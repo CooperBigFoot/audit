@@ -229,4 +229,128 @@ pub enum Command {
 
     /// List known projects.
     Projects,
+
+    /// Manage tasks (kanban-style tracking).
+    #[command(alias = "t")]
+    Task {
+        #[command(subcommand)]
+        action: TaskAction,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum TaskAction {
+    /// Add a new task.
+    Add {
+        /// Task title.
+        #[arg(long)]
+        title: String,
+
+        /// Task description.
+        #[arg(long)]
+        body: Option<String>,
+
+        /// Comma-separated tags.
+        #[arg(long)]
+        tags: Option<String>,
+
+        /// Project name (auto-detected if omitted).
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Priority level (low, medium, high, critical).
+        #[arg(long, default_value = "medium")]
+        priority: String,
+
+        /// Initial status (backlog, todo, in-progress, done, cancelled).
+        #[arg(long, default_value = "todo")]
+        status: String,
+    },
+
+    /// List tasks.
+    #[command(alias = "ls")]
+    List {
+        /// Filter by project.
+        #[arg(long)]
+        project: Option<String>,
+
+        /// Filter by status (comma-separated).
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Filter by priority (comma-separated).
+        #[arg(long)]
+        priority: Option<String>,
+
+        /// Filter by tags (comma-separated, AND logic).
+        #[arg(long)]
+        tags: Option<String>,
+
+        /// Filter by tags (comma-separated, OR logic).
+        #[arg(long)]
+        any_tags: Option<String>,
+
+        /// Show all tasks including closed (done/cancelled).
+        #[arg(long)]
+        all: bool,
+
+        /// Output format: board, short, full, or json.
+        #[arg(long, default_value = "board")]
+        format: String,
+
+        /// Max tasks to show.
+        #[arg(long)]
+        limit: Option<usize>,
+    },
+
+    /// Show a single task.
+    Show {
+        /// Task ID.
+        id: u32,
+    },
+
+    /// Update a task's fields.
+    Update {
+        /// Task ID.
+        id: u32,
+
+        /// New title.
+        #[arg(long)]
+        title: Option<String>,
+
+        /// New body/description.
+        #[arg(long)]
+        body: Option<String>,
+
+        /// New priority.
+        #[arg(long)]
+        priority: Option<String>,
+
+        /// New tags (replaces existing).
+        #[arg(long)]
+        tags: Option<String>,
+
+        /// New status.
+        #[arg(long)]
+        status: Option<String>,
+    },
+
+    /// Mark a task as done.
+    Done {
+        /// Task ID.
+        id: u32,
+    },
+
+    /// Cancel a task.
+    Cancel {
+        /// Task ID.
+        id: u32,
+    },
+
+    /// Remove a task permanently.
+    #[command(alias = "rm")]
+    Remove {
+        /// Task ID.
+        id: u32,
+    },
 }

@@ -8,6 +8,7 @@ use crate::vault::Vault;
 use crate::vault::index::ClogIndex;
 use crate::vault::parser;
 use crate::vault::search::{self, StoredEntry};
+use crate::vault::task_index::TaskIndex;
 
 pub fn run() -> Result<()> {
     let config = Config::load().context("failed to load config — run `audit init` first")?;
@@ -46,10 +47,15 @@ pub fn run() -> Result<()> {
     let index = ClogIndex::rebuild(vault.root())
         .context("failed to rebuild .clog-index.json")?;
 
+    // Rebuild the task index
+    let task_index = TaskIndex::rebuild(vault.root())
+        .context("failed to rebuild .clog-task-index.json")?;
+
     println!(
-        "Reindexed {} project(s), {} entries in .clog-index.json:",
+        "Reindexed {} project(s), {} entries, {} tasks:",
         by_project.len(),
         index.entries.len(),
+        task_index.tasks.len(),
     );
     for project in by_project.keys() {
         println!("  - {project}");

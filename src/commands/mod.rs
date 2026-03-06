@@ -8,6 +8,7 @@ pub mod search;
 pub mod setup_project;
 pub mod stats;
 pub mod sync;
+pub mod task;
 
 use anyhow::Result;
 
@@ -75,5 +76,6 @@ pub fn dispatch(command: Command) -> Result<()> {
             format,
         } => stats::run(project, since, until, format),
         Command::Projects => recent::run_projects(),
+        Command::Task { action } => task::dispatch_task(action),
     }
 }

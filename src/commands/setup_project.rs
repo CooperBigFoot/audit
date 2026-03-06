@@ -29,6 +29,13 @@ Before starting work, check recent context:
 ```bash
 clog recent --limit 5
 ```
+
+For tracking tasks:
+```bash
+clog task add --title "What needs doing" --priority high --tags "tag1"
+clog task list
+clog task done 1
+```
 <!-- END AUDIT JOURNALING -->"#;
 
 pub fn run(path: String, _name: Option<String>) -> Result<()> {

@@ -7,6 +7,7 @@ use crate::types::OutputFormat;
 use crate::vault::Vault;
 use crate::vault::filter::QueryFilter;
 use crate::vault::search::{self, StoredEntry};
+use crate::vault::task::{list_task_files, StoredTask};
 
 pub fn run(
     project: Option<String>,
@@ -33,7 +34,10 @@ pub fn run(
         return Ok(());
     }
 
-    let stats = compute_stats(&entries);
+    let tasks = list_task_files(vault.root())
+        .map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    let stats = compute_stats(&entries, &tasks);
 
     match format {
         OutputFormat::Short | OutputFormat::Full => print_stats_table(&stats),
@@ -52,9 +56,11 @@ struct Stats {
     by_project: BTreeMap<String, usize>,
     by_severity: BTreeMap<String, usize>,
     top_tags: Vec<(String, usize)>,
+    task_total: usize,
+    tasks_by_status: BTreeMap<String, usize>,
 }
 
-fn compute_stats(entries: &[StoredEntry]) -> Stats {
+fn compute_stats(entries: &[StoredEntry], tasks: &[StoredTask]) -> Stats {
     let mut by_kind: BTreeMap<String, usize> = BTreeMap::new();
     let mut by_project: BTreeMap<String, usize> = BTreeMap::new();
     let mut by_severity: BTreeMap<String, usize> = BTreeMap::new();
@@ -79,12 +85,21 @@ fn compute_stats(entries: &[StoredEntry]) -> Stats {
     top_tags.sort_by(|a, b| b.1.cmp(&a.1));
     top_tags.truncate(10);
 
+    let mut tasks_by_status: BTreeMap<String, usize> = BTreeMap::new();
+    for task in tasks {
+        *tasks_by_status
+            .entry(task.frontmatter.status.clone())
+            .or_default() += 1;
+    }
+
     Stats {
         total: entries.len(),
         by_kind,
         by_project,
         by_severity,
         top_tags,
+        task_total: tasks.len(),
+        tasks_by_status,
     }
 }
 
@@ -112,6 +127,13 @@ fn print_stats_table(stats: &Stats) {
         println!("\nTop tags:");
         for (tag, count) in &stats.top_tags {
             println!("  {tag:<20} {count}");
+        }
+    }
+
+    if stats.task_total > 0 {
+        println!("\nTasks: {}", stats.task_total);
+        for (status, count) in &stats.tasks_by_status {
+            println!("  {status:<12} {count}");
         }
     }
 }

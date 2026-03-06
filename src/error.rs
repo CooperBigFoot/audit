@@ -22,6 +22,10 @@ pub enum VaultError {
     /// Returned when the index file is corrupt or has an unsupported version.
     #[error("index corrupt or unsupported at {path}: {reason}")]
     IndexCorrupt { path: PathBuf, reason: String },
+
+    /// Returned when a task with the given ID is not found.
+    #[error("task not found: #{id}")]
+    TaskNotFound { id: u32 },
 }
 
 /// Errors from config operations.
