@@ -86,6 +86,27 @@ pub fn resolve_tags(explicit: Option<String>, config: &Config) -> Result<Vec<Tag
     Ok(tags)
 }
 
+/// Check whether stdin has data available using `poll(2)` with a 100ms timeout.
+///
+/// Returns `true` when data (or EOF) is ready to read, `false` when the timeout
+/// expires — meaning nothing is being piped.
+fn stdin_has_data() -> Result<bool> {
+    use std::os::unix::io::AsRawFd;
+
+    let fd = std::io::stdin().as_raw_fd();
+    let mut pollfd = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    // SAFETY: we pass a valid pointer to a single pollfd struct.
+    let ret = unsafe { libc::poll(&mut pollfd, 1, 100) };
+    if ret < 0 {
+        anyhow::bail!("poll(stdin) failed: {}", std::io::Error::last_os_error());
+    }
+    Ok(ret > 0)
+}
+
 /// Resolve body from flag or stdin pipe.
 pub fn resolve_body(explicit: Option<String>) -> Result<Option<String>> {
     if let Some(b) = explicit {
@@ -95,6 +116,12 @@ pub fn resolve_body(explicit: Option<String>) -> Result<Option<String>> {
     // Check if stdin is piped
     use std::io::IsTerminal;
     if !std::io::stdin().is_terminal() {
+        // Guard against blocking on a pipe that never sends data (e.g., when
+        // invoked from an IDE or agent subprocess).
+        if !stdin_has_data()? {
+            return Ok(None);
+        }
+
         let mut buf = String::new();
         std::io::stdin()
             .read_to_string(&mut buf)

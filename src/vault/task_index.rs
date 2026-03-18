@@ -77,7 +77,7 @@ impl TaskIndex {
         Ok(index)
     }
 
-    /// Save the index to the vault root.
+    /// Save the index to the vault root atomically.
     pub fn save(&self, vault_root: &Path) -> Result<(), VaultError> {
         let path = vault_root.join(TASK_INDEX_FILENAME);
         let content =
@@ -86,9 +86,21 @@ impl TaskIndex {
                 reason: format!("failed to serialize task index: {e}"),
             })?;
 
-        std::fs::write(&path, content).map_err(|source| VaultError::WriteError {
-            path,
+        let temp = tempfile::NamedTempFile::new_in(vault_root).map_err(|source| {
+            VaultError::WriteError {
+                path: path.clone(),
+                source,
+            }
+        })?;
+
+        std::fs::write(temp.path(), &content).map_err(|source| VaultError::WriteError {
+            path: path.clone(),
             source,
+        })?;
+
+        temp.persist(&path).map_err(|e| VaultError::WriteError {
+            path,
+            source: e.error,
         })?;
 
         debug!(count = self.tasks.len(), "saved task index");

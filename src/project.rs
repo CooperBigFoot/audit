@@ -1,5 +1,4 @@
-use std::path::Path;
-use std::process::Command;
+use std::path::{Path, PathBuf};
 
 use tracing::debug;
 
@@ -27,35 +26,53 @@ pub fn detect_project(working_dir: &Path) -> Result<ProjectName, ProjectError> {
     })
 }
 
-fn detect_from_remote(dir: &Path) -> Option<ProjectName> {
-    let output = Command::new("git")
-        .args(["remote", "get-url", "origin"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
+/// Walk up from `start` looking for a `.git` directory or file.
+fn find_git_root(start: &Path) -> Option<PathBuf> {
+    let mut current = start.to_path_buf();
+    loop {
+        let dot_git = current.join(".git");
+        if dot_git.exists() {
+            return Some(current);
+        }
+        if !current.pop() {
+            return None;
+        }
     }
+}
 
-    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+fn detect_from_remote(dir: &Path) -> Option<ProjectName> {
+    let root = find_git_root(dir)?;
+    let git_config_path = root.join(".git").join("config");
+    let content = std::fs::read_to_string(git_config_path).ok()?;
+    let url = parse_origin_url(&content)?;
     parse_repo_name(&url)
 }
 
 fn detect_from_toplevel(dir: &Path) -> Option<ProjectName> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    let toplevel = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let basename = Path::new(&toplevel).file_name()?.to_str()?;
+    let root = find_git_root(dir)?;
+    let basename = root.file_name()?.to_str()?;
     basename.parse().ok()
+}
+
+/// Extract the URL from the `[remote "origin"]` section of a git config.
+fn parse_origin_url(config: &str) -> Option<String> {
+    let mut in_origin = false;
+    for line in config.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') {
+            in_origin = trimmed == r#"[remote "origin"]"#;
+            continue;
+        }
+        if in_origin {
+            if let Some(rest) = trimmed.strip_prefix("url") {
+                let rest = rest.trim_start();
+                if let Some(url) = rest.strip_prefix('=') {
+                    return Some(url.trim().to_string());
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Parse repository name from a git remote URL.
@@ -116,5 +133,55 @@ mod tests {
     fn test_parse_ssh_scheme_url() {
         let name = parse_repo_name("ssh://git@github.com/user/my-repo.git").unwrap();
         assert_eq!(name.as_str(), "my-repo");
+    }
+
+    #[test]
+    fn test_find_git_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("a").join("b").join("c");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+
+        let root = find_git_root(&nested).unwrap();
+        assert_eq!(root, tmp.path());
+    }
+
+    #[test]
+    fn test_find_git_root_not_found() {
+        let tmp = tempfile::tempdir().unwrap();
+        // No .git anywhere in the temp dir's own subtree,
+        // but we can't guarantee the parent dirs don't have one,
+        // so just test that our nested dir finds the right one.
+        let nested = tmp.path().join("x");
+        std::fs::create_dir(&nested).unwrap();
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+
+        let root = find_git_root(&nested).unwrap();
+        assert_eq!(root, tmp.path());
+    }
+
+    #[test]
+    fn test_parse_origin_url() {
+        let config = r#"
+[core]
+    repositoryformatversion = 0
+[remote "origin"]
+    url = git@github.com:user/my-repo.git
+    fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+    remote = origin
+"#;
+        let url = parse_origin_url(config).unwrap();
+        assert_eq!(url, "git@github.com:user/my-repo.git");
+    }
+
+    #[test]
+    fn test_parse_origin_url_https() {
+        let config = r#"
+[remote "origin"]
+    url = https://github.com/user/my-repo.git
+"#;
+        let url = parse_origin_url(config).unwrap();
+        assert_eq!(url, "https://github.com/user/my-repo.git");
     }
 }
